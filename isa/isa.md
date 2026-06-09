@@ -6,7 +6,7 @@ A display-first GPU ISA. Unlike Vortex (a RISC-V GPGPU) or TinyGPU (a minimal
 compute-leaning teaching core), Jade pushes the graphics pipeline — rasterization,
 texture sampling, interpolation, blending, and scan-out — *into hardware as
 first-class instructions*, so the driver compiles a single shader stream against
-a small, predictable ALU vocabulary and lets the fixed-function units do the
+a small, deterministic ALU vocabulary and lets the fixed-function units do the
 heavy lifting. The compute side (a small SIMT/wavefront machine) exists to feed
 the display pipeline, not the other way around.
 
@@ -188,10 +188,10 @@ on `PRED.MOV`, `PRED.SEL`, conditional `BR`, etc.
 
 | Major | Mnemonic prefix | Class |
 |---|---|---|
-| `0x00` | `SYS`   | System: NOP, HLT, FENCE, BARRIER, KILL |
-| `0x01` | `SALU`  | Scalar ALU (operates on `s*`) |
-| `0x02` | `VALU.I`| Vector integer ALU |
-| `0x03` | `VALU.F`| Vector FP ALU |
+| `0x00` | `SYS`   | #System : NOP, HLT, FENCE, BARRIER, KILL |
+| `0x01` | `SALU`  | #Scalar ALU (operates on `s*`) |
+| `0x02` | `VALU.I`| #Vector integer ALU |
+| `0x03` | `VALU.F`| #Vector FP ALU |
 | `0x04` | `SFU`   | Special function unit: RCP, RSQRT, SIN, COS, EXP2, LOG2 |
 | `0x05` | `CMP`   | Comparison → predicate write |
 | `0x06` | `CVT`   | Numeric conversion (int↔fp, half↔float, signed/unsigned) |
@@ -203,7 +203,7 @@ on `PRED.MOV`, `PRED.SEL`, conditional `BR`, etc.
 | `0x0C` | `LDC`   | Load from constant buffer |
 | `0x0D` | `LDL`   | Load from lane-private stack |
 | `0x0E` | `STL`   | Store to lane-private stack |
-| `0x0F` | `ATOM`  | Atomic op (add, min, max, cas, exch) on global/shared |
+| `0x0F` | `ATOM`  | **PRIORITY** Atomic op (add, min, max, cas, exch) on global/shared |
 | `0x10` | `BR`    | Branch (uniform, taken when `s_rs1` matches condition) |
 | `0x11` | `CALL`  | Subroutine call, writes `lr` |
 | `0x12` | `RET`   | Subroutine return |
@@ -248,7 +248,7 @@ In all tables: every instruction is **32 bits** wide (RISC fixed length). The
 **Fmt** column gives the format (R / I / B / X). `funct11` / `funct7` are
 shown in hex.
 
-### 6.1 `SYS` — System (op `0x00`)
+### 6.1 `SYS` — #System (op `0x00`)
 
 | Mnemonic | funct11 | Fmt | Bits | Description |
 |---|---|---|---|---|
@@ -326,7 +326,7 @@ IEEE-754 single precision, round-to-nearest-even, flush-denormals-to-zero
 | `FFMA`  | `0x005` | R | 32 | Fused multiply-add (single rounding). |
 | `FMIN`  | `0x006` | R | 32 | min, returning the non-NaN operand if exactly one is NaN. |
 | `FMAX`  | `0x007` | R | 32 | max, same NaN rule. |
-| `FABS`  | `0x008` | R | 32 | `vd = |v1|`. |
+| `FABS`  | `0x008` | R | 32 | ```vd = |v1|``` |
 | `FNEG`  | `0x009` | R | 32 | Flip sign bit. |
 | `FSAT`  | `0x00A` | R | 32 | Saturate to `[0.0, 1.0]` — common enough in shaders to deserve its own slot. |
 | `FFLR`  | `0x010` | R | 32 | floor. |
