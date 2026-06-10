@@ -12,32 +12,32 @@
       self,
       nixpkgs,
       flake-utils,
-      inputs,
       # ichika,
     }:
-    flake-utils.lib.eachDefaultSystem (
+    let
+      javaVersion = 21;
+
+      overlay =
+        final: prev:
+        let
+          jdk = prev."jdk${toString javaVersion}";
+        in
+        {
+          sbt = prev.sbt.override { jre = jdk; };
+          scala = prev.scala_3.override { jre = jdk; };
+          mill = prev.mill.override { jre = jdk; };
+        };
+    in
+    {
+      overlays.default = overlay;
+    }
+    // flake-utils.lib.eachDefaultSystem (
       system:
       let
-        javaVersion = 23; # Change this value to update the whole stack
-
-        supportedSystems = [
-          "x86_64-linux"
-          "aarch64-linux"
-          "x86_64-darwin"
-          "aarch64-darwin"
-        ];
-        forEachSupportedSystem =
-          f:
-          inputs.nixpkgs.lib.genAttrs supportedSystems (
-            system:
-            f {
-              pkgs = import inputs.nixpkgs {
-                inherit system;
-                overlays = [ inputs.self.overlays.default ];
-              };
-            }
-          );
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [ overlay ];
+        };
         # hdlApps = ichika.lib.makeHdlApps {
         #   inherit pkgs;
         #   top = "my_top";
@@ -54,35 +54,20 @@
       in
       {
         # apps = hdlApps;
-        overlays.default =
-          final: prev:
-          let
-            jdk = prev."jdk${toString javaVersion}";
-          in
-          {
-            sbt = prev.sbt.override { jre = jdk; };
-            scala = prev.scala_3.override { jre = jdk; };
-            mill = prev.mill.override { jre = jdk; };
-          };
-        devShells = forEachSupportedSystem (
-          { pkgs }:
-          {
-            default = pkgs.mkShellNoCC {
-              packages = with pkgs; [
-                scala
-                sbt
-                mill
-                coursier
-                verilator
-                gcc
-                gnumake
-                python3
-                jdk23
-                which
-              ];
-            };
-          }
-        );
+        devShells.default = pkgs.mkShellNoCC {
+          packages = with pkgs; [
+            scala
+            sbt
+            mill
+            coursier
+            verilator
+            gcc
+            gnumake
+            python3
+            jdk21
+            which
+          ];
+        };
       }
     );
 }
