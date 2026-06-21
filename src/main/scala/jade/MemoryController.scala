@@ -11,6 +11,8 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.VecLiterals._
 
+import jade.lib._
+
 class MemoryController(
     addrBits: Int,
     dataBits: Int,
@@ -20,26 +22,10 @@ class MemoryController(
     ageBits: Int          = 8,
     ageThreshold: Int     = 128
 ) extends Module {
-  class ReadRequest extends Bundle {
-    val address = UInt(addrBits.W)
-    val from    = UInt(log2Ceil(numRequestors).W)
-  }
-
-  class ReadResponse extends Bundle {
-    val data = UInt(dataBits.W)
-    val from = UInt(log2Ceil(numRequestors).W)
-  }
-
-  class WriteRequest extends Bundle {
-    val address = UInt(addrBits.W)
-    val data    = UInt(dataBits.W)
-    val from    = UInt(log2Ceil(numRequestors).W)
-  }
-
   class MemoryControllerIO(n: Int) extends Bundle {
-    val readReq   = Vec(n, Flipped(Decoupled(new ReadRequest))) // requestor sends address
-    val readResp  = Vec(n, Decoupled(new ReadResponse)) // we forward data that dram returns
-    val writeReq  = Vec(n, Flipped(Decoupled(new WriteRequest))) // requestor sends address and data
+    val readReq   = Vec(n, Flipped(Decoupled(new ReadRequest(addrBits, numRequestors)))) // requestor sends address
+    val readResp  = Vec(n, Decoupled(new ReadResponse(dataBits, numRequestors))) // we forward data that dram returns
+    val writeReq  = Vec(n, Flipped(Decoupled(new WriteRequest(addrBits, dataBits, numRequestors)))) // requestor sends address and data
     val writeResp = Vec(n, Decoupled(Bool())) // dram sends ack
   }
 
@@ -53,8 +39,8 @@ class MemoryController(
   val writeAge = RegInit(VecInit(Seq.fill(numRequestors)(0.U(ageBits.W))))
 
   // Arbiter per channel that decides which requestor gets served
-  val readArb      = Seq.fill(numChannels)(Module(new RRArbiter(new ReadRequest, numRequestors)))
-  val writeArb     = Seq.fill(numChannels)(Module(new RRArbiter(new WriteRequest, numRequestors)))
+  val readArb      = Seq.fill(numChannels)(Module(new RRArbiter(new ReadRequest(addrBits, numRequestors), numRequestors)))
+  val writeArb     = Seq.fill(numChannels)(Module(new RRArbiter(new WriteRequest(addrBits, dataBits, numRequestors), numRequestors)))
   val readGranted  = WireDefault(VecInit(Seq.fill(numRequestors)(false.B)))
   val writeGranted = WireDefault(VecInit(Seq.fill(numRequestors)(false.B)))
 
@@ -80,12 +66,12 @@ class MemoryController(
       val forceWrite = anyWriteStarving && (oldestWrite === r.U)
 
       // Arbiter ignores if request is already granted
-      readArb(c).io.in(r).valid      := io.req.readReq(r).valid && !readGranted(r) || forceRead
-      readArb(c).io.in(r).bits       := io.req.readReq(r).bits
-      readArb(c).io.in(r).bits.from  := r.U
-      writeArb(c).io.in(r).valid     := io.req.writeReq(r).valid && !writeGranted(r) || forceWrite
-      writeArb(c).io.in(r).bits      := io.req.writeReq(r).bits
-      writeArb(c).io.in(r).bits.from := r.U
+      readArb(c).io.in(r).valid        := io.req.readReq(r).valid && !readGranted(r) || forceRead
+      readArb(c).io.in(r).bits         := io.req.readReq(r).bits
+      readArb(c).io.in(r).bits.origin  := r.U
+      writeArb(c).io.in(r).valid       := io.req.writeReq(r).valid && !writeGranted(r) || forceWrite
+      writeArb(c).io.in(r).bits        := io.req.writeReq(r).bits
+      writeArb(c).io.in(r).bits.origin := r.U
 
       // increment age
       when(io.req.readReq(r).valid) { readAge(r) := readAge(r) + 1.U }.otherwise { readAge(r) := 0.U }
@@ -136,7 +122,7 @@ class MemoryController(
     val writeAck = io.mem.writeResp(c)
 
     // Reroute to requestors ID
-    val readDest = readResp.bits.from
+    val readDest = readResp.bits.origin
     io.req.readResp(readDest).valid := readResp.valid
     io.req.readResp(readDest).bits  := readResp.bits
     readResp.ready                  := io.req.readResp(readDest).ready
