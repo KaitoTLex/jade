@@ -26,7 +26,7 @@ class Cache(
 }
 
 /** Set associative cache with `numSets` sets each with `numWays` ways. Replaces least recently used in case of conflict. Write policy is writeback; i.e. writes
-  * are committed to main memory when a dirty line is evicted.
+  * are committed to main memory when a dirty line is evicted. Note: Makes no attempt to ensure coherence as flushing writes is meant to be explicit
   *
   * @param numRequestors
   * @param lineWords
@@ -39,7 +39,7 @@ class LRUSetAssociativeCache(
     numRequestors: Int,
     dataBits: Int  = 32,
     addrBits: Int  = 32,
-    lineWords: Int = 4, // Number of words in each line
+    lineWords: Int = 32, // Number of 32-bit words in each line
     numSets: Int,
     numWays: Int = 4, // Number of lines per set
     tagBits: Int,
