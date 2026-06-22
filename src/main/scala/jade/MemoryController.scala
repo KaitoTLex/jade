@@ -11,7 +11,7 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.VecLiterals._
 
-import jade.lib._
+import jade.common._
 
 class MemoryController(
     addrBits: Int,
