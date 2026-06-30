@@ -285,7 +285,7 @@ class Sfu(lanes: Int = 32, latency: Int = 4) extends Module {
   // length-latency shift reg
   val validPipe = RegInit(VecInit(Seq.fill(latency)(false.B)))
   val bitsPipe  = Reg(Vec(latency, Vec(lanes, UInt(32.W))))
-
+  
   // equal 4 cycle pipeline
   validPipe(0) := io.req.valid
   bitsPipe(0)  := comb
