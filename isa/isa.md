@@ -368,7 +368,7 @@ shown in hex.
 | `FFMA`  | `0x005` | R | 32 | Fused multiply-add (single rounding). |
 | `FMIN`  | `0x006` | R | 32 | min, returning the non-NaN operand if exactly one is NaN. |
 | `FMAX`  | `0x007` | R | 32 | max, same NaN rule. |
-| `FABS`  | `0x008` | R | 32 | ```vd = |v1|``` |
+| `FABS`  | `0x008` | R | 32 | `vd = abs(v1)` (absolute value — clears the sign bit). |
 | `FNEG`  | `0x009` | R | 32 | Flip sign bit. |
 | `FSAT`  | `0x00A` | R | 32 | Saturate (clamp) to `[0.0, 1.0]` — common enough in shaders to deserve its own slot. |
 | `FFLR`  | `0x010` | R | 32 | floor (round down). |
